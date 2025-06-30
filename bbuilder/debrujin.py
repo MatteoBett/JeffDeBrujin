@@ -1,21 +1,52 @@
 from collections import defaultdict
 from typing import List, Dict
 import torch
+import time
 
 from bbuilder import utils
 import subprocess
 
 def build_de_bruijn_graph(kmers_list : List[torch.Tensor], k : int):
     graph = defaultdict(list)
-    mask = (1 << (2*(k-2))) - (1 << (2*(k-3)))
+    mask = (1 << (2*(k-1))) - 1
     for i, kmers in enumerate(kmers_list):
         utils.progressbar(iteration=i+1, total=len(kmers_list), prefix="Building Brujin graph")
+        
         for kmer in kmers:
-            prefix = kmer >> 2
-            suffix = kmer & ~mask
+            prefix = kmer.item() >> 2
+            suffix = kmer.item() & mask
             graph[prefix].append(suffix)
+
+    print("De Bruijn graph built with", len(graph), "nodes.")
+    graph = compact_chocolate(graph)
     return graph
 
 
-def brujin_cuttlefish(pathfasta : str, k : int, output : str):
-    pass
+def compact_chocolate(G: Dict[int, List[int]]) -> Dict[int, List[int]]:
+    new_graph = {}
+    visited = set()
+
+    for i, node in enumerate(list(G.keys())):
+        utils.progressbar(iteration=i+1, total=len(G), prefix="Compacting Brujin graph")
+        if node in visited:
+            continue
+        path = [node]
+        current = node
+        while current in G and len(G[current]) == 1:
+            next_node = G[current][0]
+            if next_node in G and len(G[next_node]) == 1 and next_node not in visited:
+                path.append(next_node)
+                visited.add(current)
+                current = next_node
+            else:
+                break
+
+        compacted = path[0]
+        for nxt in path[1:]:
+            compacted = (compacted << 2) | (nxt & 0b11)
+
+        end = G[path[-1]] if path[-1] in G else []
+        new_graph[compacted] = end
+        for n in path:
+            visited.add(n)
+    return new_graph

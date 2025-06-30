@@ -41,5 +41,5 @@ def stream_kmers(seq : str, k : int, ss_flag : bool = False):
 
 
 def main_kmers(seq : str, k : int, ss_flag : bool = False, device : str = "cpu"):
-    return torch.tensor([kmer for kmer in stream_kmers(seq=seq, k=k, ss_flag=ss_flag)], dtype=torch.int16, device=device)
+    return torch.tensor([kmer for kmer in stream_kmers(seq=seq, k=k, ss_flag=ss_flag)], dtype=torch.int32, device=device)
 
