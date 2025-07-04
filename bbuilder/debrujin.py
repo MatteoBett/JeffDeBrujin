@@ -1,28 +1,58 @@
 from collections import defaultdict
 from typing import List, Dict
 import torch
-import time
+import numpy as np
 
 from bbuilder import utils
 import subprocess
 
 def build_de_bruijn_graph(kmers_list : List[torch.Tensor], k : int):
+    """
+    Input:
+        kmers_list is a list of tensors, where each tensor contains the kmers for a sequence.
+        k is the length of the kmers.
+    Output:
+        Tb is the transition matrix for the De Bruijn graph, where Tb[i, j] is the probability of transitioning from node i to node j.
+        Fk is the frequency matrix for the kmers where Fk[i,j] if the frequency of kmers i and j appearing together in the same sequence.
+        start is the vector indicating the start probabilities for each node in the De Bruijn graph.
+        end is the vector indicating the end probabilities for each node in the De Bruijn graph.
+        graph is the De Bruijn graph itself, represented as a dictionary where the keys are the nodes and the values are the list of adjacent nodes.
+    """
     graph = defaultdict(list)
     mask = (1 << (2*(k-1))) - 1
+    Tb = np.zeros(shape=(4**k-1, 4**k-1), dtype=np.float32)
+    Fk = np.zeros(shape=(4**k, 4**k), dtype=np.float32)
+    start = np.zeros(shape=(4**k-1,), dtype=np.float32)
+    end = np.zeros(shape=(4**k-1,), dtype=np.float32)
     for i, kmers in enumerate(kmers_list):
         utils.progressbar(iteration=i+1, total=len(kmers_list), prefix="Building Brujin graph")
         
-        for kmer in kmers:
+        for i, kmer in enumerate(kmers):
             prefix = kmer.item() >> 2
             suffix = kmer.item() & mask
             graph[prefix].append(suffix)
+            Tb[prefix, suffix] += 1
+            Fk[kmer.item(), kmer.item() >> 2] += 1
 
+            if i == 0:
+                start[prefix] += 1
+            if i == len(kmers) - 1:
+                end[prefix] += 1
+
+    Tb = Tb/np.sum(Tb, axis=1, keepdims=True)
+    Fk = Fk/np.sum(Fk, axis=1, keepdims=True)
+    start = start/np.sum(start)
+    end = end/np.sum(end)   
     print("De Bruijn graph built with", len(graph), "nodes.")
-    graph = compact_chocolate(graph)
-    return graph
+
+    return Tb, Fk, start, end, graph
 
 
 def compact_chocolate(G: Dict[int, List[int]]) -> Dict[int, List[int]]:
+    """
+    Compact the De Bruijn graph by merging nodes that have only one outgoing edge.
+    Not currently in use
+    """
     new_graph = {}
     visited = set()
 
