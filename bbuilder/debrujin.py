@@ -20,32 +20,43 @@ def build_de_bruijn_graph(kmers_list : List[torch.Tensor], k : int):
     """
     graph = defaultdict(list)
     mask = (1 << (2*(k-1))) - 1
-    Tb = np.zeros(shape=(4**k-1, 4**k-1), dtype=np.float32)
+
+    Tb = np.zeros(shape=(4**(k-1)+2, 4**(k-1)+2), dtype=np.float32)
     Fk = np.zeros(shape=(4**k, 4**k), dtype=np.float32)
-    start = np.zeros(shape=(4**k-1,), dtype=np.float32)
-    end = np.zeros(shape=(4**k-1,), dtype=np.float32)
+
+    start_idx = -1
+    end_idx = -2
+    
     for i, kmers in enumerate(kmers_list):
         utils.progressbar(iteration=i+1, total=len(kmers_list), prefix="Building Brujin graph")
         
         for i, kmer in enumerate(kmers):
             prefix = kmer.item() >> 2
             suffix = kmer.item() & mask
+            
             graph[prefix].append(suffix)
+            
             Tb[prefix, suffix] += 1
             Fk[kmer.item(), kmer.item() >> 2] += 1
 
             if i == 0:
-                start[prefix] += 1
+                Tb[-1, prefix] += 1
             if i == len(kmers) - 1:
-                end[prefix] += 1
+                Tb[suffix, -2] += 1
+
+    Tb[-2, -2] = 1.0  # End node to itself
 
     Tb = Tb/np.sum(Tb, axis=1, keepdims=True)
     Fk = Fk/np.sum(Fk, axis=1, keepdims=True)
-    start = start/np.sum(start)
-    end = end/np.sum(end)   
-    print("De Bruijn graph built with", len(graph), "nodes.")
 
-    return Tb, Fk, start, end, graph
+    print("De Bruijn graph built with", len(graph), "nodes. Matrix shape:", Tb.shape)
+    
+    start_idx = Tb.shape[0] - 1
+    end_idx = Tb.shape[0] - 2
+    
+    Tb = torch.tensor(Tb, dtype=torch.float32)
+    Fk = torch.tensor(Fk, dtype=torch.float32)
+    return Tb, Fk, start_idx, end_idx, graph
 
 
 def compact_chocolate(G: Dict[int, List[int]]) -> Dict[int, List[int]]:
