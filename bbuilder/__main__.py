@@ -24,18 +24,18 @@ def main(pathseq : str,
     
     kmers_list = [streamkmers.main_kmers(seq=seq, k=k, device=device) for seq in loader.loadfasta(path=pathseq)]
     print("Loaded", len(kmers_list), "sequences from", pathseq, "with a total of", sum([len(kmers) for kmers in kmers_list]), "kmers.")
-    Tb, Fk, start, end, graph = debrujin.build_de_bruijn_graph(kmers_list=kmers_list, k=k)
+    Tb, P, Fk, start, end, graph = debrujin.build_de_bruijn_graph(kmers_list=kmers_list, k=k)
     print("Compacted De Bruijn graph built with", len(graph), "nodes.")
 
-    samples = sample.metropolis_hastings_sampling(Tb=Tb, start_idx=start, end_idx=end, num_samples=num_samples)
+    samples = sample.metropolis_hastings_sampling(Tb=Tb, P=P, start_idx=start, end_idx=end, num_samples=num_samples)
     seqs = utils.bit2seq(samples=samples, end_idx=end, k=k, output_path=output_path)
     viz.seqsize_distribution(sequences=seqs, natseqs=pathseq)
     
 
 if __name__ == "__main__":
-    pathseq = r'data/GII/GII.fasta'
+    pathseq = r'data/test/GII.fasta'
     output_path = r'out/sequences/seqs.fasta'
     k = 7
-    num_samples = 1000
+    num_samples = 10
     device = "cpu"
     main(pathseq=pathseq, output_path=output_path, k=k, num_samples=num_samples, device=device)

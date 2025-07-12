@@ -23,14 +23,15 @@ def build_de_bruijn_graph(kmers_list : List[torch.Tensor], k : int):
 
     Tb = np.zeros(shape=(4**(k-1)+2, 4**(k-1)+2), dtype=np.float32)
     Fk = np.zeros(shape=(4**k, 4**k), dtype=np.float32)
+    P = np.zeros(shape=(4**(k-1)+2, ), dtype=np.float32)
 
-    start_idx = -1
-    end_idx = -2
+    start_idx = Tb.shape[0] - 1
+    end_idx = Tb.shape[0] - 2
     
     for i, kmers in enumerate(kmers_list):
         utils.progressbar(iteration=i+1, total=len(kmers_list), prefix="Building Brujin graph")
         
-        for i, kmer in enumerate(kmers):
+        for j, kmer in enumerate(kmers):
             prefix = kmer.item() >> 2
             suffix = kmer.item() & mask
             
@@ -38,25 +39,26 @@ def build_de_bruijn_graph(kmers_list : List[torch.Tensor], k : int):
             
             Tb[prefix, suffix] += 1
             Fk[kmer.item(), kmer.item() >> 2] += 1
+            P[prefix] += 1
+            P[suffix] += 1
 
-            if i == 0:
-                Tb[-1, prefix] += 1
-            if i == len(kmers) - 1:
-                Tb[suffix, -2] += 1
+            if j == 0:
+                Tb[start_idx, prefix] += 1
+            if j == len(kmers) - 1:
+                Tb[suffix, end_idx] += 1
 
     Tb[-2, -2] = 1.0  # End node to itself
+    print("De Bruijn graph built with", len(graph), "nodes. Matrix shape:", Tb.shape)
 
+    P = P/P.sum()
     Tb = Tb/np.sum(Tb, axis=1, keepdims=True)
     Fk = Fk/np.sum(Fk, axis=1, keepdims=True)
 
-    print("De Bruijn graph built with", len(graph), "nodes. Matrix shape:", Tb.shape)
-    
-    start_idx = Tb.shape[0] - 1
-    end_idx = Tb.shape[0] - 2
-    
     Tb = torch.tensor(Tb, dtype=torch.float32)
     Fk = torch.tensor(Fk, dtype=torch.float32)
-    return Tb, Fk, start_idx, end_idx, graph
+    P = torch.tensor(P, dtype=torch.float32)
+    print(Tb[:, end_idx].sum())
+    return Tb, P, Fk, start_idx, end_idx, graph
 
 
 def compact_chocolate(G: Dict[int, List[int]]) -> Dict[int, List[int]]:
