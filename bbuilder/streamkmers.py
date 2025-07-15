@@ -1,5 +1,10 @@
 import torch
 
+def kmer_size():
+    """
+    Computes the optimal kmer size for a given probability of occurence.
+    """
+
 
 def encode_nucl(nucl : str):
     """ 
@@ -36,5 +41,5 @@ def stream_kmers(seq : str, k : int):
 
 
 def main_kmers(seq : str, k : int, device : str = "cpu"):
-    return torch.tensor([kmer for kmer in stream_kmers(seq=seq, k=k)], dtype=torch.int32, device=device)
+    return torch.tensor([kmer for kmer in stream_kmers(seq=seq, k=k)], dtype=torch.int64, device=device)
 
