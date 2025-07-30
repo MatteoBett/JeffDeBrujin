@@ -1,4 +1,14 @@
 import torch
+from Bio import SeqIO
+
+from typing import List, Dict
+
+def make_index(kmers_list : List[torch.Tensor]) -> Dict[int, int]:
+    """
+    Indexes the kmers
+    """
+    _all = torch.cat(kmers_list).unique(sorted=True)
+    print(_all.shape)
 
 def progressbar(iteration, total, prefix = '', suffix = '', filler = '█', printEnd = "\r") -> None:
     """ Show a progress bar indicating downloading progress """
@@ -8,6 +18,10 @@ def progressbar(iteration, total, prefix = '', suffix = '', filler = '█', prin
     print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
     if iteration == total: 
         print()
+
+def enddist(seqpath : str):
+    d = torch.tensor([len(seq) for seq in SeqIO.parse(seqpath, "fasta")], dtype=torch.int32)
+    return d/d.sum()
 
 def kmer2str(val, k):
     """ Transform a kmer integer into a its string representation

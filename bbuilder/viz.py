@@ -23,7 +23,7 @@ def seqsize_distribution(sequences, natseqs : str):
     plt.grid(True)
     plt.savefig(r'out/figures/seqsize_distribution.png')
 
-def kmers_diversity(kmers_list : List[torch.Tensor],  bins : int = 100):
+def kmers_diversity(kmers_list : List[torch.Tensor],  bins : int = 5):
     dico = {i: [] for i in range(0, bins+1)}
 
     for kmers in kmers_list:
